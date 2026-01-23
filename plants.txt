@@ -1,0 +1,5 @@
+        metadata: 0 (number)
+        hardness: 0.80000001192093 (number)
+        harvestLevel: -1 (number)
+        color: 31744 (number)
+        name: IC2:blockCrop (string)
