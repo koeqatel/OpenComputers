@@ -4,6 +4,7 @@ local geolyzer = component.geolyzer
 local robot = require("robot")
 local event = require("event")
 local config = require("config")
+local Print = require("functions.Print")
 
 local args = { ... }
 local targetGrowth
@@ -11,40 +12,11 @@ local targetGain
 local targetResistance
 local targetSpecies
 
-local function printT(tbl, indent)
-    indent = indent or 4
-    local indentStr = string.rep(" ", indent)
-
-    for key, value in pairs(tbl) do
-        if type(value) == "table" then
-            print(indentStr .. key .. " (table):")
-            printT(value, indent + 1)
-        else
-            print(indentStr .. key .. ": " .. tostring(value) .. " (" .. type(value) .. ")")
-        end
-    end
-end
-
-local function weedKiller(crop)
-    if crop["crop:name"] == "weed" then
-        print("weed")
-        robot.use()
-        robot.dropDown()
-    end
-end
-
-local function scan()
-    local crop = geolyzer.analyze(sides.front)
-    weedKiller(crop)
-
-    printT(crop)
-end
-
 local function runConfig()
     if args[1] == nil then
         -- Read config
         if config == nil then
-            print("config is empty")
+            Print("config is empty")
             return
         end
 
@@ -60,22 +32,22 @@ local function runConfig()
 
         -- Check current
         if tonumber(targetGrowth) > 23 then
-            print("Target Growth may not be higher than 23")
+            Print("Target Growth may not be higher than 23")
             return
         elseif tonumber(targetGrowth) < 0 then
-            print("Target Growth may not be lower than 0")
+            Print("Target Growth may not be lower than 0")
             return
         elseif tonumber(targetGain) > 31 then
-            print("Target Gain may not be higher than 31")
+            Print("Target Gain may not be higher than 31")
             return
         elseif tonumber(targetGain) < 0 then
-            print("Target Gain may not be lower than 0")
+            Print("Target Gain may not be lower than 0")
             return
         elseif tonumber(targetResistance) > 31 then
-            print("Target Resistance may not be higher than 31")
+            Print("Target Resistance may not be higher than 31")
             return
         elseif tonumber(targetResistance) < 0 then
-            print("Target Resistance may not be lower than 0")
+            Print("Target Resistance may not be lower than 0")
             return
         end
 
@@ -87,13 +59,13 @@ local function runConfig()
         -- Write config
         local file = io.open("config.lua", "a")
         file:write("local config =\n{")
-        file:write("\ntargetGrowth = ")
+        file:write("\n    targetGrowth = ")
         file:write(targetGrowth)
-        file:write(",\ntargetGain = ")
+        file:write(",\n    targetGain = ")
         file:write(targetGain)
-        file:write(",\ntargetResistance = ")
+        file:write(",\n    targetResistance = ")
         file:write(targetResistance)
-        file:write(",\ntargetSpecies = ")
+        file:write(",\n    targetSpecies = ")
         file:write(targetSpecies or "nil")
         file:write("\n}")
         file:write("\nreturn config")
@@ -101,22 +73,50 @@ local function runConfig()
     end
 end
 
+local function weedKiller(crop)
+    if crop["crop:name"] == "weed" then
+        robot.useDown()
+        robot.placeDown()
+    end
+end
+
+local function walk()
+    robot.forward()
+    local crop = geolyzer.analyze(sides.down)
+    weedKiller(crop)
+
+    robot.forward()
+    local crop = geolyzer.analyze(sides.down)
+    weedKiller(crop)
+
+    robot.forward()
+    local crop = geolyzer.analyze(sides.down)
+    weedKiller(crop)
+
+    robot.back()
+    robot.back()
+    robot.back()
+end
+
 local function run()
-    print("plants.lua running. Press any key to abort...")
-    print("run plants.lua <growth> <gain> <resistance> <species> to store to config")
-    print("")
+    Print("plants.lua running. Press crtl + C to abort...")
+    Print("run plants.lua <growth> <gain> <resistance> <species> to store to config")
+    Print("")
 
     runConfig()
+
     while true do
-        scan()
+        walk()
 
         -- Wait for key press with a timeout (in seconds)
         local eventType, address, char, code = event.pull(5, "key_down")
 
         -- If a key was pressed before timeout, exit
         if eventType == "key_down" then
-            print("Stopping...")
-            return
+            if char == 3 then
+                Print("Stopping...")
+                return
+            end
         end
 
         -- If timeout occurred, continue the loop
